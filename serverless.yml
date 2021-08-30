@@ -1,0 +1,44 @@
+service: serverless-inbox-service
+
+plugins:
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: prod
+  region: eu-west-1
+  stackName: serverless-inbox-service-stack
+  apiName: serverless-inbox-service-api
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 's3:*'
+      Resource: 'arn:aws:s3:::email.nicholasgriffin.dev/*'
+    - Effect: 'Allow'
+      Action:
+        - 'sns:*'
+      Resource: 'arn:aws:sns:eu-west-1:175054299308:inbox-sns-receive'
+
+package:
+  patterns:
+    - '!config/**'
+    - '!.eslintrc.js'
+    - '!package-lock.json'
+    - '!package.json'
+    - '!yarn.lock'
+    - 'config.js'
+
+functions:
+  process:
+    handler: handler.process
+    description: Process inbox messages and send to SNS
+    timeout: 15
+    events:
+      - s3:
+          bucket: email.nicholasgriffin.dev
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: processed/inbox/
+            - suffix: .json
+          existing: true
